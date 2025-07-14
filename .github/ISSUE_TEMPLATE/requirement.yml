@@ -1,0 +1,41 @@
+name: Requirement
+description: A business or user need that defines a problem to be solved.
+title: "[REQ] "
+labels: [requirement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Opportunity
+      description: What are we trying to solve? What’s the pain point or opportunity?
+      placeholder: Describe the problem in clear, user-focused terms...
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why Now?
+      description: What makes this worth solving now? What’s the business or user value?
+      placeholder: Business case, urgency, dependencies, risk reduction, etc.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Background / Context
+      description: Add any known constraints, user feedback, linked discussions, etc.
+      placeholder: Links to research, support tickets, design explorations...
+
+  - type: textarea
+    id: potential_solutions
+    attributes:
+      label: Early Ideas (optional)
+      description: Do you have any early thinking on how this could be addressed?
+      placeholder: Leave blank if unknown — shaping happens later.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High
+        - Medium
+        - Low

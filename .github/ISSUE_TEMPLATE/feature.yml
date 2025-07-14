@@ -1,0 +1,24 @@
+name: Feature Request
+description: For feature requests. Please search for existing issues first. Also see CONTRIBUTING.
+title: "[Feature]: "
+labels: ["feature", "enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please Describe The Problem To Be Solved**  
+        (Replace this text: Please present a concise description of the problem to be addressed by this feature request. Please be clear what parts of the problem are considered to be in-scope and out-of-scope.)
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: Concisely describe the problem to be addressed.
+      placeholder: Please present a concise description of the problem...
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        **(Optional) Additional Context**  
+        (Add any other context, screenshots, or examples about the feature request here.)

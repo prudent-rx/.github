@@ -1,7 +1,7 @@
 name: Requirement
 description: A business or user need that defines a problem to be solved.
 title: "[REQ] "
-labels: [requirement]
+labels: ["type/requirement"]
 body:
   - type: textarea
     id: problem

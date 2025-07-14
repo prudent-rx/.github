@@ -2,7 +2,7 @@
 name: Pitch
 description: A proposal for a product improvement or new idea
 title: "[PITCH] "
-labels: [pitch]
+labels: ["type/pitch"]
 body:
   - type: textarea
     id: problem

@@ -1,0 +1,71 @@
+name: Bug report
+description: Create a report to help us improve
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for reporting a bug! Please complete the form below to help us reproduce and fix the issue.**
+  - type: input
+    id: summary
+    attributes:
+      label: Bug summary
+      description: A short summary of the bug.
+      placeholder: e.g., "Application crashes on login"
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Explain how to reproduce the bug, step by step.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: e.g., "I expected to be redirected to the dashboard."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+      placeholder: e.g., "The app crashed and showed a 500 error."
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Please provide relevant environment details (e.g., OS, browser, device, version, etc.)
+      placeholder: e.g., "Windows 11, Chrome 125.0"
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or logs
+      description: Attach logs, screenshots, or screen recordings to help explain your problem.
+      placeholder: "Drag and drop files here or paste images/logs."
+    validations:
+      required: false
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we reach you if we need more info? (optional)
+      placeholder: "e.g., @yourusername, email@example.com"
+    validations:
+      required: false

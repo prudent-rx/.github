@@ -1,24 +1,37 @@
 name: Feature Request
-description: For feature requests. Please search for existing issues first. Also see CONTRIBUTING.
+description: Suggest a new feature or enhancement for this project.
 title: "[Feature]: "
-labels: ["feature", "enhancement"]
-assignees: []
+labels: ["feature"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Please Describe The Problem To Be Solved**  
-        (Replace this text: Please present a concise description of the problem to be addressed by this feature request. Please be clear what parts of the problem are considered to be in-scope and out-of-scope.)
+        ## Thank you for suggesting a feature!
+        Please fill out the details below to help us understand your request.
+
   - type: textarea
     id: problem
     attributes:
-      label: Problem Description
-      description: Concisely describe the problem to be addressed.
-      placeholder: Please present a concise description of the problem...
+      label: Problem Statement
+      description: What problem will this feature solve? Why is it important?
+      placeholder: Ex. It's difficult to track user activity because...
     validations:
       required: true
-  - type: markdown
+
+  - type: textarea
+    id: proposed-solution
     attributes:
-      value: |
-        **(Optional) Additional Context**  
-        (Add any other context, screenshots, or examples about the feature request here.)
+      label: Proposed Solution
+      description: Please describe your ideal solution or feature.
+      placeholder: Ex. Add an activity dashboard with filtering options.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information, mockups, screenshots, or context?
+      placeholder: Ex. Links, screenshots, related issues, etc.
+    validations:
+      required: false

@@ -1,0 +1,41 @@
+---
+name: Pitch
+description: A proposal for a product improvement or new idea
+title: "[PITCH] "
+labels: [pitch]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Opportunity
+      description: What’s the pain point or opportunity? Why is it worth solving?
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Suggested Approach
+      description: What are we proposing to build? What's the general idea (not detailed implementation)?
+
+  - type: textarea
+    id: appetite
+    attributes:
+      label: Appetite
+      description: How much time are we willing to invest in this? (e.g., 2 weeks, 1 cycle, etc.)
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / Rabbit Holes
+      description: What parts could get complicated or derail us?
+
+  - type: textarea
+    id: no_go
+    attributes:
+      label: No-Gos / Boundaries
+      description: What are we intentionally *not* solving or supporting in this pitch?
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Supporting Material
+      description: Add links to research, diagrams, prior discussions, or related pitches

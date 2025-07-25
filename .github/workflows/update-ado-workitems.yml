@@ -1,0 +1,420 @@
+name: Update Azure DevOps Work Items (Reusable)
+
+# Reusable workflow for updating ADO work items from commit and PR merge events
+# Combines functionality from update-ado-on-commit.yml and update-ado-on-pr.yml
+# 
+# Secrets can be provided in two ways:
+# 1. Passed from calling workflow (supports repository secrets)
+# 2. Accessed directly (supports organizational secrets with repository override)
+
+on:
+  workflow_call:
+    inputs:
+      trigger_type:
+        description: 'Type of trigger: "commit" or "pr_merge"'
+        required: true
+        type: string
+      target_state:
+        description: 'Target state for work items (optional for pr_merge - will be determined by branch)'
+        required: false
+        type: string
+        default: ''
+      branch_name:
+        description: 'Branch name for context'
+        required: true
+        type: string
+      commit_sha:
+        description: 'Commit SHA (required for commit trigger type)'
+        required: false
+        type: string
+        default: ''
+      commit_before_sha:
+        description: 'Before commit SHA (required for commit trigger type)'
+        required: false
+        type: string
+        default: ''
+      commit_messages:
+        description: 'JSON array of commit messages (required for commit trigger type)'
+        required: false
+        type: string
+        default: '[]'
+      pr_title:
+        description: 'PR title (required for pr_merge trigger type)'
+        required: false
+        type: string
+        default: ''
+      pr_body:
+        description: 'PR body (required for pr_merge trigger type)'
+        required: false
+        type: string
+        default: ''
+      pr_base_branch:
+        description: 'PR base branch (required for pr_merge trigger type)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ADO_ORG_URL:
+        description: 'Azure DevOps organization URL (optional if using organizational secrets)'
+        required: false
+      ADO_PAT:
+        description: 'Azure DevOps Personal Access Token (optional if using organizational secrets)'
+        required: false
+      ADO_PROJECT:
+        description: 'Azure DevOps project name (optional if using organizational secrets)'
+        required: false
+
+jobs:
+  update-ado-workitems:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Azure DevOps Work Items
+        uses: actions/github-script@v7
+        env:
+          ADO_ORG_URL: ${{ secrets.ADO_ORG_URL }}
+          ADO_PAT: ${{ secrets.ADO_PAT }}
+          ADO_PROJECT: ${{ secrets.ADO_PROJECT }}
+          TRIGGER_TYPE: ${{ inputs.trigger_type }}
+          TARGET_STATE: ${{ inputs.target_state }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMMIT_BEFORE_SHA: ${{ inputs.commit_before_sha }}
+          COMMIT_MESSAGES: ${{ inputs.commit_messages }}
+          PR_TITLE: ${{ inputs.pr_title }}
+          PR_BODY: ${{ inputs.pr_body }}
+          PR_BASE_BRANCH: ${{ inputs.pr_base_branch }}
+        with:
+          script: |
+            const https = require('https');
+            const { URL } = require('url');
+            const { execSync } = require('child_process');
+
+            function makeRequest(url, options, data = null) {
+              return new Promise((resolve, reject) => {
+                const req = https.request(url, options, (res) => {
+                  let body = '';
+                  res.on('data', (chunk) => body += chunk);
+                  res.on('end', () => {
+                    try {
+                      const result = {
+                        statusCode: res.statusCode,
+                        data: body ? JSON.parse(body) : null
+                      };
+                      resolve(result);
+                    } catch (e) {
+                      resolve({
+                        statusCode: res.statusCode,
+                        data: body
+                      });
+                    }
+                  });
+                });
+                req.on('error', reject);
+                if (data) req.write(JSON.stringify(data));
+                req.end();
+              });
+            }
+
+            function extractWorkItemIds(text) {
+              if (!text) return [];
+              const patterns = [
+                /\bAB#(\d+)\b/g,
+                /\b[A-Z]{2,}#(\d+)\b/g,
+                /(?:^|[^\w])#(\d+)\b/g,
+                /\bwork[\s-]*item[\s#]*(\d+)\b/gi,
+                /\bwi[\s#]*(\d+)\b/gi,
+                /\btask[\s#]*(\d+)\b/gi,
+                /\bbug[\s#]*(\d+)\b/gi,
+                /\bfeature[\s#]*(\d+)\b/gi
+              ];
+              const workItemIds = new Set();
+              patterns.forEach((pattern) => {
+                let match;
+                pattern.lastIndex = 0;
+                while ((match = pattern.exec(text)) !== null) {
+                  workItemIds.add(parseInt(match[1]));
+                }
+              });
+              return Array.from(workItemIds);
+            }
+
+            async function updateWorkItemState(workItemId, newState) {
+              console.log(`Attempting to update work item ${workItemId} to state '${newState}'...`);
+              
+              if (!process.env.ADO_ORG_URL || !process.env.ADO_PAT || !process.env.ADO_PROJECT) {
+                console.log(`❌ ERROR: Missing required secrets for work item ${workItemId}. Check ADO_ORG_URL, ADO_PAT, and ADO_PROJECT.`);
+                return { success: false, reason: 'Missing secrets' };
+              }
+              
+              const orgUrl = process.env.ADO_ORG_URL.replace(/\/$/, '');
+              const pat = process.env.ADO_PAT;
+              const project = process.env.ADO_PROJECT;
+              const closedStates = ['Resolved', 'Closed', 'Done', 'Completed', 'Removed'];
+              
+              const getUrl = `${orgUrl}/${project}/_apis/wit/workitems/${workItemId}?api-version=7.0`;
+              const auth = Buffer.from(`:${pat}`).toString('base64');
+              const getOptions = {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Basic ${auth}`,
+                  'Content-Type': 'application/json'
+                }
+              };
+              
+              try {
+                console.log(`📡 Making GET request to fetch current state of work item ${workItemId}...`);
+                const getResponse = await makeRequest(getUrl, getOptions);
+                
+                if (getResponse.statusCode !== 200) {
+                  console.log(`❌ ERROR: Failed to fetch work item ${workItemId}. Status: ${getResponse.statusCode}, Response: ${JSON.stringify(getResponse.data)}`);
+                  return { success: false, reason: `GET request failed with status ${getResponse.statusCode}` };
+                }
+                
+                const currentState = getResponse.data?.fields?.['System.State'];
+                console.log(`📋 Work item ${workItemId} current state: '${currentState}'`);
+                
+                if (currentState === newState) {
+                  console.log(`✅ Work item ${workItemId} is already in '${newState}' state. No update needed.`);
+                  return { success: true, reason: 'Already in target state' };
+                }
+                
+                // For commit trigger moving to 'Doing', protect closed states
+                if (process.env.TRIGGER_TYPE === 'commit' && newState === 'Doing' && closedStates.includes(currentState)) {
+                  console.log(`🛡️ SKIPPED: Work item ${workItemId} is in closed state '${currentState}'. Will not move back to 'Doing'.`);
+                  return { success: true, reason: `Protected closed state '${currentState}'` };
+                }
+                
+                // For PR merge trigger, protect truly closed states
+                if (process.env.TRIGGER_TYPE === 'pr_merge' && closedStates.includes(currentState)) {
+                  console.log(`🛡️ SKIPPED: Work item ${workItemId} is in protected state '${currentState}'. Will not move to '${newState}'.`);
+                  return { success: false, reason: `Protected state '${currentState}'` };
+                }
+                
+                console.log(`🔄 Updating work item ${workItemId} from '${currentState}' to '${newState}'...`);
+                const updateUrl = `${orgUrl}/${project}/_apis/wit/workitems/${workItemId}?api-version=7.0`;
+                const updateData = [{ "op": "add", "path": "/fields/System.State", "value": newState }];
+                const updateOptions = {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Basic ${auth}`,
+                    'Content-Type': 'application/json-patch+json'
+                  }
+                };
+                
+                console.log(`📡 Making PATCH request to update work item ${workItemId}...`);
+                const updateResponse = await makeRequest(updateUrl, updateOptions, updateData);
+                
+                if (updateResponse.statusCode === 200) {
+                  const updatedState = updateResponse.data?.fields?.['System.State'];
+                  console.log(`✅ SUCCESS: Work item ${workItemId} updated to '${updatedState}' state.`);
+                  return { success: true, reason: 'Successfully updated' };
+                } else {
+                  console.log(`❌ ERROR: Failed to update work item ${workItemId}. Status: ${updateResponse.statusCode}, Response: ${JSON.stringify(updateResponse.data)}`);
+                  return { success: false, reason: `PATCH request failed with status ${updateResponse.statusCode}` };
+                }
+              } catch (error) {
+                console.log(`❌ ERROR: Exception occurred while updating work item ${workItemId}: ${error.message}`);
+                return { success: false, reason: `Exception: ${error.message}` };
+              }
+            }
+
+            async function checkIfCommitIsUniqueToBranch(branchName, commitSha) {
+              console.log(`🔍 Checking if commit ${commitSha} is unique to branch '${branchName}'...`);
+              
+              try {
+                // Fetch latest refs to ensure we have up-to-date branch information
+                console.log('📡 Fetching latest refs...');
+                try {
+                  execSync('git fetch --all', { stdio: 'pipe' });
+                } catch (fetchError) {
+                  console.log('⚠️ Could not fetch latest refs, using cached refs');
+                }
+                
+                // Get all remote branches except the current one
+                const allBranchesOutput = execSync('git branch -r', { encoding: 'utf-8' });
+                const allBranches = allBranchesOutput
+                  .split('\n')
+                  .map(line => line.trim().replace('origin/', ''))
+                  .filter(branch => branch && !branch.includes('HEAD') && branch !== branchName);
+                
+                console.log(`📋 Found ${allBranches.length} other branches to check: ${allBranches.slice(0, 5).join(', ')}${allBranches.length > 5 ? '...' : ''}`);
+                
+                // Check against common source branches first (main, master, develop, staging)
+                const commonSourceBranches = ['main', 'master', 'develop', 'staging'].filter(branch => 
+                  allBranches.includes(branch)
+                );
+                
+                if (commonSourceBranches.length > 0) {
+                  console.log(`🎯 Checking against common source branches: ${commonSourceBranches.join(', ')}`);
+                  
+                  for (const sourceBranch of commonSourceBranches) {
+                    try {
+                      // Check if the commit exists in the source branch
+                      execSync(`git merge-base --is-ancestor ${commitSha} origin/${sourceBranch}`, { stdio: 'pipe' });
+                      console.log(`🔗 Commit ${commitSha} is present in source branch '${sourceBranch}' - NOT unique to current branch`);
+                      return false;
+                    } catch (error) {
+                      // merge-base --is-ancestor returns non-zero if commit is not an ancestor
+                      console.log(`✅ Commit ${commitSha} is NOT in branch '${sourceBranch}'`);
+                    }
+                  }
+                }
+                
+                // If not found in common branches, check against all other branches
+                console.log('🔍 Checking against all other branches...');
+                for (const otherBranch of allBranches.slice(0, 10)) { // Limit to avoid excessive checks
+                  if (commonSourceBranches.includes(otherBranch)) continue;
+                  
+                  try {
+                    execSync(`git merge-base --is-ancestor ${commitSha} origin/${otherBranch}`, { stdio: 'pipe' });
+                    console.log(`🔗 Commit ${commitSha} is present in branch '${otherBranch}' - NOT unique to current branch`);
+                    return false;
+                  } catch (error) {
+                    // commit is not in this branch
+                  }
+                }
+                
+                console.log(`✅ Commit ${commitSha} appears to be unique to branch '${branchName}'`);
+                return true;
+                
+              } catch (error) {
+                console.log(`❌ Error checking commit uniqueness: ${error.message}`);
+                console.log('⚠️ Defaulting to treating commit as unique to be safe');
+                return true; // Default to true to avoid blocking legitimate first commits
+              }
+            }
+
+            async function processCommitTrigger() {
+              console.log('🚀 Starting Azure DevOps work item update process for commit...');
+              
+              const branchName = process.env.BRANCH_NAME;
+              const commitSha = process.env.COMMIT_SHA;
+              const beforeSha = process.env.COMMIT_BEFORE_SHA;
+              const commitMessages = JSON.parse(process.env.COMMIT_MESSAGES || '[]');
+              
+              console.log(`📋 Branch: ${branchName}`);
+              console.log(`📋 Before SHA: ${beforeSha}`);
+              console.log(`📋 After SHA: ${commitSha}`);
+              console.log(`📋 Triggering commit: ${commitSha}`);
+              
+              // Check if this commit is unique to this branch (not inherited from source branch)
+              const isUniqueCommit = await checkIfCommitIsUniqueToBranch(branchName, commitSha);
+              
+              if (!isUniqueCommit) {
+                console.log('ℹ️ This commit is not unique to the current branch (inherited from source branch). Skipping work item state update to prevent circumventing other state transitions.');
+                return;
+              }
+              
+              console.log('✅ This is a unique commit to the current branch. Proceeding with work item state updates.');
+              
+              let workItemIds = [];
+              console.log(`📄 Processing ${commitMessages.length} commit message(s)...`);
+              
+              commitMessages.forEach((message, index) => {
+                const foundIds = extractWorkItemIds(message);
+                console.log(`🔍 Commit ${index + 1}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}" contains work items: ${foundIds.length > 0 ? foundIds.join(', ') : 'none'}`);
+                workItemIds.push(...foundIds);
+              });
+              
+              workItemIds = [...new Set(workItemIds)];
+              console.log(`📋 Total unique work items to process: ${workItemIds.length} (${workItemIds.join(', ')})`);
+              
+              if (workItemIds.length === 0) {
+                console.log('ℹ️ No work item references found in commit messages. Nothing to update.');
+                return;
+              }
+              
+              const targetState = process.env.TARGET_STATE || 'Doing';
+              return await processWorkItems(workItemIds, targetState);
+            }
+
+            async function processPRMergeTrigger() {
+              console.log('🚀 Starting Azure DevOps work item update process for PR merge...');
+              
+              const prTitle = process.env.PR_TITLE || '';
+              const prBody = process.env.PR_BODY || '';
+              const baseBranch = process.env.PR_BASE_BRANCH;
+              
+              console.log(`📄 PR Title: "${prTitle}"`);
+              console.log(`📄 PR Description: "${prBody.substring(0, 200)}${prBody.length > 200 ? '...' : ''}"`);
+              
+              // Extract work item IDs from title and body separately for logging
+              const titleWorkItemIds = extractWorkItemIds(prTitle);
+              const bodyWorkItemIds = extractWorkItemIds(prBody);
+              
+              console.log(`🔍 Work items found in PR title: ${titleWorkItemIds.length > 0 ? titleWorkItemIds.join(', ') : 'none'}`);
+              console.log(`🔍 Work items found in PR description: ${bodyWorkItemIds.length > 0 ? bodyWorkItemIds.join(', ') : 'none'}`);
+              
+              // Combine and deduplicate
+              const allWorkItemIds = [...new Set([...titleWorkItemIds, ...bodyWorkItemIds])];
+              
+              if (allWorkItemIds.length === 0) {
+                console.log('ℹ️ No work item references found in PR title or description. Nothing to update.');
+                return;
+              }
+              
+              console.log(`📋 Total unique work items to process: ${allWorkItemIds.length} (${allWorkItemIds.join(', ')})`);
+              
+              // Determine target state based on the base branch or use provided target state
+              let targetState = process.env.TARGET_STATE;
+              if (!targetState) {
+                targetState = 'Resolved'; // default state
+                
+                if (baseBranch === 'develop' || baseBranch === 'qa') {
+                  targetState = 'QA';
+                } else if (baseBranch === 'uat') {
+                  targetState = 'UAT';
+                }
+              }
+              
+              console.log(`🎯 Target branch: '${baseBranch}' → Target work item state: '${targetState}'`);
+              console.log('');
+              
+              return await processWorkItems(allWorkItemIds, targetState);
+            }
+
+            async function processWorkItems(workItemIds, targetState) {
+              let successCount = 0;
+              let skipCount = 0;
+              let errorCount = 0;
+              
+              for (const workItemId of workItemIds) {
+                console.log(`--- Processing work item ${workItemId} ---`);
+                const result = await updateWorkItemState(workItemId, targetState);
+                
+                if (result.success) {
+                  successCount++;
+                } else if (result.reason.includes('Protected')) {
+                  skipCount++;
+                } else {
+                  errorCount++;
+                }
+                console.log(''); // Add spacing between work items
+              }
+              
+              console.log('📊 SUMMARY:');
+              console.log(`✅ Successfully processed: ${successCount} work items`);
+              console.log(`🛡️ Skipped (protected state): ${skipCount} work items`);
+              console.log(`❌ Failed with errors: ${errorCount} work items`);
+              console.log('🏁 Azure DevOps work item update process completed.');
+              
+              return { successCount, skipCount, errorCount };
+            }
+
+            async function main() {
+              const triggerType = process.env.TRIGGER_TYPE;
+              
+              if (triggerType === 'commit') {
+                await processCommitTrigger();
+              } else if (triggerType === 'pr_merge') {
+                await processPRMergeTrigger();
+              } else {
+                console.log(`❌ ERROR: Invalid trigger type '${triggerType}'. Must be 'commit' or 'pr_merge'.`);
+                process.exit(1);
+              }
+            }
+
+            await main();

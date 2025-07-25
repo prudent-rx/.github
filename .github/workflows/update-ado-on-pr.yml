@@ -1,0 +1,26 @@
+name: Update Azure DevOps Work Items on PR Merge
+
+# This workflow moves referenced ADO work items to different states based on target branch when a PR is closed and merged.
+# - develop/qa branches: moves to 'QA'
+# - uat branch: moves to 'UAT'  
+# - other branches: moves to 'Resolved'
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-ado-workitem-pr-merge:
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/update-ado-workitems.yml
+    with:
+      trigger_type: 'pr_merge'
+      branch_name: ${{ github.event.pull_request.base.ref }}
+      pr_title: ${{ github.event.pull_request.title }}
+      pr_body: ${{ github.event.pull_request.body }}
+      pr_base_branch: ${{ github.event.pull_request.base.ref }}
+    # Secrets are optional - if not passed, the reusable workflow will use 
+    # organizational or repository secrets directly
+    secrets:
+      ADO_ORG_URL: ${{ secrets.ADO_ORG_URL }}
+      ADO_PAT: ${{ secrets.ADO_PAT }}
+      ADO_PROJECT: ${{ secrets.ADO_PROJECT }}

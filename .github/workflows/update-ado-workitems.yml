@@ -364,9 +364,9 @@ jobs:
                 targetState = 'Resolved'; // default state
                 
                 if (baseBranch === 'develop' || baseBranch === 'qa') {
-                  targetState = 'QA';
+                  targetState = 'Resolved';
                 } else if (baseBranch === 'uat') {
-                  targetState = 'UAT';
+                  targetState = 'Signoff';
                 }
               }
               

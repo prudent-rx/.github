@@ -12,7 +12,7 @@ jobs:
     uses: ./.github/workflows/update-ado-workitems.yml
     with:
       trigger_type: 'commit'
-      target_state: 'Doing'
+      target_state: 'Active'
       branch_name: ${{ github.ref_name }}
       commit_sha: ${{ github.sha }}
       commit_before_sha: ${{ github.event.before }}

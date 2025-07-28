@@ -4,9 +4,13 @@ name: Update Azure DevOps Work Items on Commit
 # This prevents circumventing other state transitions when making subsequent commits.
 on:
   push:
-    branches:
-      - '**'  # Trigger on push to any branch
-
+    branches-ignore:
+      - 'main'
+      - 'develop'
+      - 'qa'
+      - 'uat'
+      - 'staging'
+      
 jobs:
   update-ado-workitem-commit:
     uses: ./.github/workflows/update-ado-workitems.yml

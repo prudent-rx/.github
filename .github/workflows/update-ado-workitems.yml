@@ -121,14 +121,7 @@ jobs:
             function extractWorkItemIds(text) {
               if (!text) return [];
               const patterns = [
-                /\bAB#(\d+)\b/g,
-                /\b[A-Z]{2,}#(\d+)\b/g,
-                /(?:^|[^\w])#(\d+)\b/g,
-                /\bwork[\s-]*item[\s#]*(\d+)\b/gi,
-                /\bwi[\s#]*(\d+)\b/gi,
-                /\btask[\s#]*(\d+)\b/gi,
-                /\bbug[\s#]*(\d+)\b/gi,
-                /\bfeature[\s#]*(\d+)\b/gi
+                /\bAB#(\d+)\b/g
               ];
               const workItemIds = new Set();
               patterns.forEach((pattern) => {

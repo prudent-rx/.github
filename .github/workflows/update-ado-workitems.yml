@@ -145,7 +145,7 @@ jobs:
               const orgUrl = process.env.ADO_ORG_URL.replace(/\/$/, '');
               const pat = process.env.ADO_PAT;
               const project = process.env.ADO_PROJECT;
-              const closedStates = ['Resolved', 'Closed', 'Done', 'Completed', 'Removed'];
+              const closedStates = ['Closed', 'Done', 'Completed', 'Removed'];
               
               const getUrl = `${orgUrl}/${project}/_apis/wit/workitems/${workItemId}?api-version=7.0`;
               const auth = Buffer.from(`:${pat}`).toString('base64');

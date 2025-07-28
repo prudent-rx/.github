@@ -354,12 +354,14 @@ jobs:
               // Determine target state based on the base branch or use provided target state
               let targetState = process.env.TARGET_STATE;
               if (!targetState) {
-                targetState = 'Resolved'; // default state
+                targetState = 'Todo'; // default state
                 
-                if (baseBranch === 'develop' || baseBranch === 'qa') {
+                if (baseBranch === 'develop' || baseBranch === 'dev' || baseBranch === 'qa') {
                   targetState = 'Resolved';
-                } else if (baseBranch === 'uat') {
+                } else if (baseBranch === 'uat' || baseBranch === 'staging') {
                   targetState = 'Signoff';
+                } else if (baseBranch === 'main' || baseBranch === 'master') {
+                  targetState = 'Done';
                 }
               }
               

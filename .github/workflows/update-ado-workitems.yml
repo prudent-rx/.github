@@ -361,7 +361,7 @@ jobs:
                 } else if (baseBranch === 'uat' || baseBranch === 'staging') {
                   targetState = 'Signoff';
                 } else if (baseBranch === 'main' || baseBranch === 'master') {
-                  targetState = 'Done';
+                  targetState = 'Closed';
                 }
               }
               
